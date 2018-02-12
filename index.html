@@ -1,0 +1,250 @@
+<!-- 
+	YuxuanWang-CHINA 
+	project7
+	城市旅游路线规划系统
+	
+	MIT License
+	Copyright (c) 2018 Yuxuan_Wang
+ -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />  
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>主页面</title>
+<style type="text/css">  
+	html{height:100%}
+	body{height:100%;margin:0px;padding:0px}
+	#container{height:80%;width:100%}
+	#placeSet{height:20%;width:100%}
+	#list{width:50%}
+	#routePanel{height:80%;width:100%}
+</style>
+<link href="http://cdn.bootcss.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+<script type="text/javascript" src="http://cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script>
+<script type="text/javascript" src="http://api.map.baidu.com/api?v=2.0&ak=please_input"></script> 
+</head>
+
+<body>
+<div class="col-lg-12" style="padding:20px;font-size:2em;background-color:#EFD1F3;">
+<span><strong>城市旅游路线规划系统Project7</strong></span>
+</div>
+
+<form class="form-inline">
+	<div class="form-group">
+	   <label for="chooseCity">City</label>
+	   <input type="text" class="form-control" id="chooseCity">
+	</div>
+	<button type="button" class="btn btn-primary" onClick="city()">OK</button>
+</form>
+
+<div id="container" class="col-lg-12"></div>
+
+<div class="col-lg-6">
+<div id="placeSet">
+	<button type="button" id="place1" class="addButton btn btn-default btn-lg" onClick="addButton(1)">Place1</button>
+	<span class="testPlace" id="testPlace1"></span>
+	<br/>
+	<button type="button" id="addPlaceButton" class="btn btn-info btn-lg" onClick="addPlaceButton()">Add<span class="glyphicon glyphicon-plus"></span></button>
+	<button type="button" id="removePlaceButton" class="btn btn-info btn-lg" onClick="removePlaceButton()" disabled="disabled">Remove<span class="glyphicon glyphicon-minus"></span></button>
+	<button type="button" id="clearButton" class="btn btn-warning btn-lg" onClick="clearButton()">Clear</button>
+	<button type="button" id="transitButton" class="btn btn-primary btn-lg" onClick="transitButton()">Search Routes</button>
+</div>
+<div id="routePanel"></div>
+</div>
+
+<div id="list" class="col-lg-6">
+<div>
+	<button type="button" class="listPanel btn btn-default btn-lg" onClick="localSearch('景点')">tourist attraction</button>
+	<button type="button" class="listPanel btn btn-default btn-lg" onClick="localSearch('酒店')">Hotel</button>
+	<button type="button" id="clearSearchButton" class="btn btn-warning btn-lg" onClick="clearSearchButton()">Clear results</button>
+	<div class="form-inline">
+		<span class="form-group">
+	    	<label for="yours">Yours</label>
+	    	<input type="text" class="form-control" id="yours">
+		</span>
+	<button type="button" class="listPanel btn btn-primary btn-lg" onClick="localSearch($('#yours').val())">Search</button>
+	</div>
+</div>
+<div id="listPanel"></div>
+</div>
+
+<div>
+<p class="col-lg-12 text-right" style="padding:20px;font-size:2em;background-color:#EFD1F3;"><span>Developer:</span><strong>Yuxuan Wang</strong></p>
+</div> 
+
+<script type="text/javascript">
+	var $map;
+	var $placeNumber=1;
+	var $addButton=0;
+	var $place=new Array();
+	$place[0]=0;
+	var $localSearchResult=null;
+	var $searchRoute=new Array();
+	var $cityName;
+	var $local;	
+	
+	function mapLoading()
+	{ 
+		$map=new BMap.Map("container");          // 创建地图实例  
+		var $point=new BMap.Point(116.404, 39.915);  // 创建点坐标  
+		$map.centerAndZoom($point, 15);
+		$map.addControl(new BMap.NavigationControl());
+		$map.enableScrollWheelZoom();
+		getCity();
+	};
+	
+	function getCity()
+	{
+		var $myCity = new BMap.LocalCity();
+		$myCity.get(getCityCallback);
+	};
+	
+	function getCityCallback(_result)
+	{
+		$cityName = _result.name;
+		$map.setCenter($cityName);
+		$("#chooseCity").val($cityName);
+	};
+		
+	function localSearch(_keyword)
+	{
+		$("#yours").val("");
+		if($local!=null){$local.clearResults();}
+		$local = new BMap.LocalSearch($map,
+			{
+				renderOptions:
+				{map:$map,
+				panel:listPanel},
+				onSearchComplete:localSearchCallback,
+				onMarkersSet:markerCallback,
+				pageCapacity:8
+			}
+		);
+		$local.disableFirstResultSelection();
+		$local.search($cityName+_keyword);
+	};
+	
+	function localSearchCallback(_result)
+	{
+		$localSearchResult=_result;
+	};
+	
+	function markerCallback(_markers)
+	{
+		for(var $i=0;$i<8;$i++)
+		{
+			var add=function(_i)
+				{
+					var $title=_markers[_i].marker.getTitle();
+					_markers[_i].marker.addEventListener
+						("click",
+							function()
+							{
+								var $buttonId="#testPlace"+$addButton.toString();
+								$($buttonId).text($title);
+								$place[$addButton]=$localSearchResult.getPoi(_i);
+							}
+						)
+				};
+			add($i);			
+		};
+	};
+	
+	function addButton(_number)
+	{
+		$(".addButton").removeClass("active");
+		var $buttonId="#place"+_number.toString();
+		$($buttonId).addClass("active");
+		$addButton=_number;
+	};
+	
+	function clearButton()
+	{
+		$(".addButton").removeClass("active");
+		$(".testPlace").text("");
+		$addButton=0;
+		$place=[];
+		for (var $i=1;$i<=$placeNumber-1;$i++)
+		{
+			$searchRoute[$i].clearResults();
+		};
+		$(".routePlanButton").remove();
+		$(".routes").remove();
+	};
+	
+	function addPlaceButton()
+	{
+		var $newNumber=$placeNumber+1;
+		var $insert="<button type='button' id='place"+$newNumber.toString()+"' class='addButton btn btn-default btn-lg' onClick='addButton("+$newNumber.toString()+")'>Place"+$newNumber.toString()+"</button><span class='testPlace' id='testPlace"+$newNumber.toString()+"'></span><br/>";
+		$("#addPlaceButton").before($insert);
+		$placeNumber=$placeNumber+1;
+		$("#removePlaceButton").removeAttr("disabled");
+	};
+	
+	function transitButton()
+	{
+		$(".routePlanButton").remove();
+		$(".routes").remove();
+		
+		for (var $i=1;$i<=$placeNumber-1;$i++)
+		{
+			var $ii=$i+1;
+			$("#routePanel").append("<button type='button' class='routePlanButton btn btn-default btn-lg' onClick='routePlanButton("+$i.toString()+")'>Place"+$i.toString()+"--Place"+$ii+"</button>");
+		};
+		
+		for (var $i=1;$i<=$placeNumber-1;$i++)
+		{
+			$("#routePanel").append("<div id=routePanel"+$i.toString()+" class='routes'></div>")
+			var $panel="routePanel"+$i.toString();
+			$searchRoute[$i]=new BMap.TransitRoute($map,
+				{
+					renderOptions:
+					{map:$map,
+					panel:$panel}
+				}
+			);
+			$searchRoute[$i].search($place[$i],$place[$i+1]);
+			$place[0]=1;
+		};
+		$(".routes").hide();
+	};
+	
+	function routePlanButton(_number)
+	{
+		$(".routes").hide();
+		var $panel="#routePanel"+_number.toString();
+		$($panel).show();
+	};
+	
+	function clearSearchButton()
+	{
+		$local.clearResults();
+		$("#yours").val("");
+	};
+	
+	function removePlaceButton()
+	{
+		var $name="#place"+$placeNumber.toString();
+		$($name).remove();
+		var $nametest="#testPlace"+$placeNumber.toString();
+		$($nametest).remove();
+		$place.splice($placeNumber,1);
+		$placeNumber--;
+		if ($placeNumber==1)
+		{
+			$("#removePlaceButton").attr("disabled","disabled");
+		};
+		$("#placeSet br:last").remove();
+	};
+	
+	function city()
+	{
+		$cityName=$("#chooseCity").val();
+		$map.setCenter($cityName); 
+	};
+	
+	mapLoading();
+</script>  
+</body>
+</html>
